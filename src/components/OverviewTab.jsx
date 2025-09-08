@@ -23,7 +23,7 @@ const OverviewTab = ({ data }) => {
     }).format(value)
   }
 
-  const COLORS = ['#e50914', '#52cc5a', '#ffc02a', '#333333']
+  const COLORS = ['#e50914', '#52cc5a', '#ffc02a', '#666']
 
   return (
     <div className="space-y-8">
@@ -105,24 +105,25 @@ const OverviewTab = ({ data }) => {
             <PieChart>
               <Pie
                 data={data.statusDistribution}
-                cx="50%"
+                cx="47%"
                 cy="50%"
                 labelLine={false}
                 label={({ name, value }) => `${name}: ${value}%`}
-                outerRadius={80}
-                fill="#8884d8"
+                outerRadius={86}
+                fill="#333"
                 dataKey="value"
               >
+
                 {data.statusDistribution.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip 
                 contentStyle={{
-                  backgroundColor: '#1a1a1a',
-                  border: '1px solid #333',
+                  backgroundColor: '#f8f8f8',
+                  border: '1px solid #fff',
                   borderRadius: '8px',
-                  color: '#fff'
+                  color: 'fff'
                 }}
               />
             </PieChart>
@@ -140,7 +141,7 @@ const OverviewTab = ({ data }) => {
               <XAxis 
                 dataKey="name" 
                 tick={{ fill: '#ccc', fontSize: 12 }}
-                angle={-45}
+                angle={-30}
                 textAnchor="end"
                 height={80}
               />
