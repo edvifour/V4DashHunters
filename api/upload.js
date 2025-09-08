@@ -9,6 +9,24 @@ export const config = {
   },
 }
 
+// 🔹 Função para converter valores monetários no formato brasileiro
+function parseMoneyBR(v) {
+  if (typeof v === 'number' && Number.isFinite(v)) return v
+  if (typeof v !== 'string') return 0
+
+  let s = v.trim().replace(/^R\$\s?/i, '')
+
+  if (/,/.test(s)) {
+    // remove pontos que são apenas separadores de milhar
+    s = s.replace(/\.(?=\d{3}(\D|$))/g, '')
+    // troca vírgula decimal por ponto
+    s = s.replace(',', '.')
+  }
+
+  const num = Number(s)
+  return Number.isFinite(num) ? num : 0
+}
+
 export default async function handler(req, res) {
   // Configurar CORS
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -105,30 +123,40 @@ function normalizeData(rawData) {
     
     Object.keys(row).forEach(key => {
       const lowerKey = key.toLowerCase().trim()
-      
+
+      // Priorizar observações para não confundir "Observação da Unidade" com "Unidade"
       if (lowerKey.includes('titulo') || lowerKey.includes('cliente') || lowerKey.includes('nome')) {
         normalizedRow.titulo = row[key] || ''
-      } else if (lowerKey.includes('unidade')) {
-        normalizedRow.unidade = row[key] || ''
-      } else if (lowerKey.includes('competencia') || lowerKey.includes('competência') || lowerKey.includes('vencimento')) {
-        normalizedRow.competencia = row[key] || ''
-      } else if (lowerKey.includes('valor')) {
-        // Converter valor para número
-        let valor = row[key] || 0
-        if (typeof valor === 'string') {
-          valor = valor.replace(/[^\d,.-]/g, '').replace(',', '.')
-        }
-        normalizedRow.valor = parseFloat(valor) || 0
-      } else if (lowerKey.includes('categoria')) {
-        normalizedRow.categoria = row[key] || 'OUTROS'
-      } else if (lowerKey.includes('cobrar')) {
-        normalizedRow.cobrar = row[key] || 'Sim'
       } else if (lowerKey.includes('observacao') || lowerKey.includes('observação')) {
         if (lowerKey.includes('unidade')) {
           normalizedRow.observacaoUnidade = row[key] || ''
         } else if (lowerKey.includes('account')) {
           normalizedRow.observacaoAccount = row[key] || ''
+        } else {
+          normalizedRow.observacao = row[key] || ''
         }
+      } else if (lowerKey.includes('unidade')) {
+        normalizedRow.unidade = row[key] || ''
+      } else if (lowerKey.includes('competencia') || lowerKey.includes('competência') || lowerKey.includes('vencimento')) {
+        normalizedRow.competencia = row[key] || ''
+      } else if (lowerKey.includes('valor')) {
+        // Converter valor para número (tratando separador de milhar '.' e decimal ',')
+        let valor = row[key] || 0
+        if (typeof valor === 'string') {
+          valor = valor.trim()
+          // Caso pt-BR "2.000,00" -> remover pontos de milhar e trocar vírgula por ponto
+          if (valor.indexOf('.') !== -1 && valor.indexOf(',') !== -1) {
+            valor = valor.replace(/\./g, '').replace(',', '.')
+          } else {
+            // Remover caracteres indesejados e padronizar vírgula para ponto
+            valor = valor.replace(/[^\d,.-]/g, '').replace(',', '.')
+          }
+        }
+        normalizedRow.valor = parseMoneyBR(row[key]) || 0
+      } else if (lowerKey.includes('categoria')) {
+        normalizedRow.categoria = row[key] || 'OUTROS'
+      } else if (lowerKey.includes('cobrar')) {
+        normalizedRow.cobrar = row[key] || 'Sim'
       } else if (lowerKey.includes('motivo') || lowerKey.includes('atraso')) {
         normalizedRow.motivoAtraso = row[key] || ''
       } else if (lowerKey.includes('status')) {
@@ -156,7 +184,16 @@ function analyzeData(data) {
 
   // Calcular métricas básicas
   const totalCases = data.length
-  const totalValue = data.reduce((sum, row) => sum + (row.valor || 0), 0)
+  //const totalValue = data.reduce((sum, row) => sum + (row.valor || 0), 0)
+  const totalValue = data
+    .filter(row => {
+      const categoria = (row['Categoria'] || row['categoria'] || '').toString().trim().toLowerCase()
+      return categoria.includes('royalties')
+    })
+    .reduce((sum, row) => {
+      // reaproveita sua função de parse para garantir que vira número
+      return sum + parseMoneyBR(row['Valor'] || row['valor'] || 0)
+    }, 0)
 
   // Análise de status
   const statusCount = {}
@@ -191,13 +228,14 @@ function analyzeData(data) {
   })
 
   const units = Object.values(unitAnalysis)
-  const topUnits = units
-    .sort((a, b) => a.value - b.value)
-    .slice(0, 10)
 
-  const worstUnits = units
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 10)
+  // Evitar mutação e ordenar explicitamente
+  const sortedDesc = [...units].sort((a, b) => a.value - b.value) // maior -> menor
+  const sortedAsc = [...units].sort((a, b) => b.value - a.value)  // menor -> maior
+
+  const topUnits = sortedDesc.slice(0, 10)
+  const worstUnits = sortedAsc.slice(0, 10)
+
 
   // Análise adicional
   const categoryAnalysis = {}
@@ -224,4 +262,3 @@ function analyzeData(data) {
     rawData: data // Incluir dados brutos para análises mais detalhadas
   }
 }
-
