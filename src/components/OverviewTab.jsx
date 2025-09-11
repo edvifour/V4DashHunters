@@ -3,7 +3,7 @@ import { TrendingUp, TrendingDown, FileText, DollarSign } from 'lucide-react'
 
 const OverviewTab = ({ data }) => {
   if (!data || !data.rawData || data.rawData.length === 0) {
-    return (
+    return(
       <div className="text-center py-12">
         <FileText className="w-16 h-16 v4-text-gray mx-auto mb-4" />
         <h2 className="text-xl font-semibold v4-text-white mb-2">
