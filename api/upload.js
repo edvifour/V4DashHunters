@@ -82,7 +82,7 @@ export default async function handler(req, res) {
       const parsed = Papa.parse(csvContent, {
         header: true,
         skipEmptyLines: true,
-        transformHeader: (header) => header.trim()
+        transformHeader: (header) => String(header || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
       })
       data = parsed.data
     } else {
@@ -120,9 +120,16 @@ function normalizeData(rawData) {
   return rawData.map(row => {
     // Normalizar nomes das colunas (case-insensitive e flexível)
     const normalizedRow = {}
-    
+    const normalizedKey = (k) => {
+      if (!k && k !== 0) return ''
+      // garante string
+      const s = String(k)
+      // NFD + remover diacríticos (acentos), depois lower + trim
+      return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+    }
+
     Object.keys(row).forEach(key => {
-      const lowerKey = key.toLowerCase().trim()
+      const lowerKey = normalizedKey(key)
 
       // Priorizar observações para não confundir "Observação da Unidade" com "Unidade"
       if (lowerKey.includes('titulo') || lowerKey.includes('cliente') || lowerKey.includes('nome')) {
