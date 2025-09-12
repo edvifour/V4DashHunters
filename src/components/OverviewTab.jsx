@@ -23,6 +23,11 @@ const OverviewTab = ({ data }) => {
     }).format(value)
   }
 
+  const distributionWithAmounts = data.statusDistribution.map(item => ({
+    ...item,
+    amount: (item.value / 100) * data.totalValue
+  }))
+
   const COLORS = ['#e50914', '#52cc5a', '#ffc02a', '#666']
 
   return (
@@ -102,32 +107,61 @@ const OverviewTab = ({ data }) => {
             Distribuição por Status
           </h3>
           <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={data.statusDistribution}
-                cx="47%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, value }) => `${name}: ${value}%`}
-                outerRadius={86}
-                fill="#333"
-                dataKey="value"
-              >
+            <div className="flex justify-between items-center h-full">
+              {/* Gráfico de Pizza */}
+              <PieChart width={250} height={300}>
+                <Pie
+                  data={distributionWithAmounts}
+                  cx="45%"
+                  cy="50%"
+                  labelLine={false}
+                  outerRadius={86}
+                  fill="#333"
+                  dataKey="value"
+                >
+                  {distributionWithAmounts.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
 
-                {data.statusDistribution.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                {/* Tooltip customizado */}
+                <Tooltip
+                  formatter={(value, name, props) => {
+                    const realValue = formatCurrency(props.payload.amount)
+                    return [`${realValue} (${value}%)`, name]
+                  }}
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #333',
+                    borderRadius: '8px',
+                    color: '#fff'
+                  }}
+                />
+              </PieChart>
+
+              {/* Legenda à direita */}
+              <div className="space-y-2 ml-0">
+                {distributionWithAmounts.map((entry, index) => (
+                  <div
+                    key={`legend-${index}`}
+                    className="flex items-center space-x-2 text-sm v4-text-white"
+                  >
+                    {/* Bolinha colorida */}
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    {/* Nome + valores */}
+                    <span>
+                      {entry.name}: {formatCurrency(entry.amount)} ({entry.value}%)
+                    </span>
+                  </div>
                 ))}
-              </Pie>
-              <Tooltip 
-                contentStyle={{
-                  backgroundColor: '#f8f8f8',
-                  border: '1px solid #fff',
-                  borderRadius: '8px',
-                  color: 'fff'
-                }}
-              />
-            </PieChart>
+              </div>
+            </div>
           </ResponsiveContainer>
+
+
         </div>
 
         {/* Gráfico de Casos por Status */}
@@ -227,4 +261,3 @@ const OverviewTab = ({ data }) => {
 }
 
 export default OverviewTab
-
