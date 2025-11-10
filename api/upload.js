@@ -185,78 +185,79 @@ function analyzeData(data) {
       mostCommonStatus: 'N/A',
       statusDistribution: [],
       topUnits: [],
-      worstUnits: []
+      worstUnits: [],
+      categoryAnalysis: {},
+      rawData: []
     }
   }
 
-  // Calcular métricas básicas
   const totalCases = data.length
-  //const totalValue = data.reduce((sum, row) => sum + (row.valor || 0), 0)
-  const totalValue = data
-    .filter(row => {
-      const categoria = (row['Categoria'] || row['categoria'] || '').toString().trim().toLowerCase()
-      return categoria.includes('royalties')
-    })
-    .reduce((sum, row) => {
-      // reaproveita sua função de parse para garantir que vira número
-      return sum + parseMoneyBR(row['Valor'] || row['valor'] || 0)
-    }, 0)
+  const totalValue = data.reduce((sum, row) => sum + (row.valor || 0), 0)
 
-  // Análise de status
+  // 🔹 Agrupar valores por status
   const statusCount = {}
+  const statusAmount = {}
+
   data.forEach(row => {
     const status = row.status || 'Em cobrança'
+    const valor = row.valor || 0
+
     statusCount[status] = (statusCount[status] || 0) + 1
+    statusAmount[status] = (statusAmount[status] || 0) + valor
   })
 
-  const mostCommonStatus = Object.keys(statusCount).reduce((a, b) => 
+  const mostCommonStatus = Object.keys(statusCount).reduce((a, b) =>
     statusCount[a] > statusCount[b] ? a : b
   )
 
-  const statusDistribution = Object.keys(statusCount).map(status => ({
-    name: status,
-    value: Math.round((statusCount[status] / totalCases) * 100),
-    count: statusCount[status]
-  }))
+  const statusDistribution = Object.keys(statusCount).map(status => {
+    const amount = statusAmount[status] || 0
+    const percent = totalValue > 0 ? (amount / totalValue) * 100 : 0
+    return {
+      name: status,
+      count: statusCount[status],
+      amount,
+      value: Math.round(percent)
+    }
+  })
 
-  // Análise por unidades
+  // 🔹 Unidades
   const unitAnalysis = {}
   data.forEach(row => {
     const unit = row.unidade
     if (!unitAnalysis[unit]) {
-      unitAnalysis[unit] = {
-        name: unit,
-        value: 0,
-        cases: 0
-      }
+      unitAnalysis[unit] = { name: unit, value: 0, cases: 0 }
     }
     unitAnalysis[unit].value += row.valor || 0
     unitAnalysis[unit].cases += 1
   })
 
   const units = Object.values(unitAnalysis)
-
-  // Evitar mutação e ordenar explicitamente
-  const sortedDesc = [...units].sort((a, b) => a.value - b.value) // maior -> menor
-  const sortedAsc = [...units].sort((a, b) => b.value - a.value)  // menor -> maior
-
+  const sortedDesc = [...units].sort((a, b) => b.value - a.value)
+  const sortedAsc = [...units].sort((a, b) => a.value - b.value)
   const topUnits = sortedDesc.slice(0, 10)
   const worstUnits = sortedAsc.slice(0, 10)
 
-
-  // Análise adicional
+  // 🔹 Categorias
   const categoryAnalysis = {}
   data.forEach(row => {
-    const category = row.categoria || 'OUTROS'
-    if (!categoryAnalysis[category]) {
-      categoryAnalysis[category] = {
-        count: 0,
-        value: 0
-      }
-    }
-    categoryAnalysis[category].count += 1
-    categoryAnalysis[category].value += row.valor || 0
+    const cat = row.categoria || 'OUTROS'
+    if (!categoryAnalysis[cat]) categoryAnalysis[cat] = { count: 0, value: 0 }
+    categoryAnalysis[cat].count += 1
+    categoryAnalysis[cat].value += row.valor || 0
   })
+
+  // 🔹 Motivos de atraso
+  const delayReasonCount = {}
+  data.forEach(row => {
+    let reason = (row.motivoAtraso || '').toString().trim()
+    if (!reason) reason = 'Não informado'
+    delayReasonCount[reason] = (delayReasonCount[reason] || 0) + 1
+  })
+
+  const delayReasonDistribution = Object.keys(delayReasonCount)
+    .map(r => ({ name: r, count: delayReasonCount[r] }))
+    .sort((a, b) => b.count - a.count)
 
   return {
     totalCases,
@@ -266,6 +267,8 @@ function analyzeData(data) {
     topUnits,
     worstUnits,
     categoryAnalysis,
-    rawData: data // Incluir dados brutos para análises mais detalhadas
+    delayReasonDistribution,
+    rawData: data
   }
 }
+
