@@ -1,6 +1,24 @@
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { TrendingUp, TrendingDown, FileText, DollarSign } from 'lucide-react'
 
+const getStatusColor = (name = '') => {
+  const n = name.toString().toLowerCase()
+
+  if (n.includes('pago')) return '#52cc5a' // verde
+  if (n.includes('negociado')) return '#52cc5a' // verde
+
+  if (n.includes('franqueado inadimplente')) return '#ffc02a' // amarelo
+  if (n.includes('alinhamento unidade')) return '#ffc02a' // amarelo
+
+  if (n.includes('erro interno')) return '#666666' // cinza
+
+  if (n.includes('cobrança')) return '#e50914' // vermelho
+  if (n.includes('tratativa de churn')) return '#e50914' // vermelho
+
+  return '#999999' // fallback neutro
+}
+
+
 const OverviewTab = ({ data }) => {
   if (!data || !data.rawData || data.rawData.length === 0) {
     return(
@@ -23,10 +41,15 @@ const OverviewTab = ({ data }) => {
     }).format(value)
   }
 
-  const distributionWithAmounts = data.statusDistribution.map(item => ({
-    ...item,
-    amount: (item.value / 100) * data.totalValue
-  }))
+  const distributionWithAmounts = data.statusDistribution || []
+
+
+  // ordem do maior pro menor para gráfico + legenda
+  const sortedStatusDistribution = [...distributionWithAmounts].sort(
+    (a, b) => b.amount - a.amount
+  )
+
+  const delayReasonData = data.delayReasonDistribution || []
 
   const COLORS = ['#e50914', '#52cc5a', '#ffc02a', '#666']
 
@@ -99,59 +122,61 @@ const OverviewTab = ({ data }) => {
         </div>
       </div>
 
-      {/* Gráficos */}
+      {/* Linha com dois gráficos: Status x Motivo do Atraso */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Gráfico de Status */}
+        {/* Gráfico - Distribuição por Status (Pizza) */}
         <div className="v4-card rounded-lg p-6">
           <h3 className="text-xl font-semibold v4-text-white mb-6">
             Distribuição por Status
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <div className="flex justify-between items-center h-full">
-              {/* Gráfico de Pizza */}
-              <PieChart width={250} height={300}>
+          <ResponsiveContainer width="100%" height={260}>
+            <div className="flex items-center justify-center gap-16 w-full h-full">
+              <PieChart width={260} height={260}>
                 <Pie
-                  data={distributionWithAmounts}
-                  cx="45%"
+                  data={sortedStatusDistribution}
+                  cx="45%"          // aproxima mais do centro
                   cy="50%"
-                  labelLine={false}
-                  outerRadius={86}
-                  fill="#333"
+                  outerRadius={110} // aumenta o raio pra ocupar melhor
+                  paddingAngle={2}
                   dataKey="value"
                 >
-                  {distributionWithAmounts.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {sortedStatusDistribution.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={getStatusColor(entry.name)}
+                    />
                   ))}
                 </Pie>
-
-                {/* Tooltip customizado */}
                 <Tooltip
                   formatter={(value, name, props) => {
                     const realValue = formatCurrency(props.payload.amount)
                     return [`${realValue} (${value}%)`, name]
                   }}
                   contentStyle={{
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #333',
-                    borderRadius: '8px',
-                    color: '#fff'
+                    backgroundColor: '#2a2a2a',
+                    border: '1px solid #555',
+                    borderRadius: '10px',
+                    color: '#fff',
+                    fontSize: '13px',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.6)',
+                    padding: '8px 12px'
                   }}
+                  itemStyle={{ color: '#fff' }}
+                  labelStyle={{ color: '#aaa', fontWeight: 500 }}
                 />
               </PieChart>
 
-              {/* Legenda à direita */}
-              <div className="space-y-2 ml-0">
-                {distributionWithAmounts.map((entry, index) => (
+              {/* Legenda ordenada do maior pro menor */}
+              <div className="space-y-2 text-sm">
+                {sortedStatusDistribution.map((entry, index) => (
                   <div
                     key={`legend-${index}`}
-                    className="flex items-center space-x-2 text-sm v4-text-white"
+                    className="flex items-center space-x-2 v4-text-white"
                   >
-                    {/* Bolinha colorida */}
                     <div
                       className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      style={{ backgroundColor: getStatusColor(entry.name) }}
                     />
-                    {/* Nome + valores */}
                     <span>
                       {entry.name}: {formatCurrency(entry.amount)} ({entry.value}%)
                     </span>
@@ -160,27 +185,25 @@ const OverviewTab = ({ data }) => {
               </div>
             </div>
           </ResponsiveContainer>
-
-
         </div>
 
-        {/* Gráfico de Casos por Status */}
+        {/* Quantidade de Casos por Status */}
         <div className="v4-card rounded-lg p-6">
           <h3 className="text-xl font-semibold v4-text-white mb-6">
             Quantidade de Casos por Status
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={data.statusDistribution}>
               <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-              <XAxis 
-                dataKey="name" 
-                tick={{ fill: '#ccc', fontSize: 12 }}
-                angle={-30}
+              <XAxis
+                dataKey="name"
+                tick={{ fill: '#ccc', fontSize: 11 }}
+                angle={-25}
                 textAnchor="end"
-                height={80}
+                height={70}
               />
-              <YAxis tick={{ fill: '#ccc' }} />
-              <Tooltip 
+              <YAxis tick={{ fill: '#ccc', fontSize: 11 }} />
+              <Tooltip
                 contentStyle={{
                   backgroundColor: '#1a1a1a',
                   border: '1px solid #333',
@@ -193,6 +216,38 @@ const OverviewTab = ({ data }) => {
           </ResponsiveContainer>
         </div>
       </div>
+
+      <div className="grid grid-cols-3 lg:grid-cols-1 gap-8">
+        {/* Quantidade por Motivo do Atraso */}
+        <div className="v4-card rounded-lg p-6">
+          <h3 className="text-xl font-semibold v4-text-white mb-6">
+            Quantidade por Motivo do Atraso
+          </h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={delayReasonData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+              <XAxis
+                dataKey="name"
+                tick={{ fill: '#ccc', fontSize: 10 }}
+                angle={-25}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis tick={{ fill: '#ccc', fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#1a1a1a',
+                  border: '1px solid #333',
+                  borderRadius: '8px',
+                  color: '#fff'
+                }}
+              />
+              <Bar dataKey="count" fill="#e50914" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
 
       {/* Rankings */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

@@ -220,6 +220,11 @@ const UnitsTab = ({ data }) => {
                             {client.categoria}
                           </div>
                         )}
+                        {client.motivoAtraso && (
+                          <span className="text-xs bg-purple-900 text-purple-400 px-2 py-1 rounded whitespace-nowrap ml-1">
+                            {client.motivoAtraso}
+                          </span>
+                        )}
                       </div>
                       <div className="text-right">
                         <div className="font-semibold v4-text-white">
