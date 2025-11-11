@@ -233,8 +233,8 @@ function analyzeData(data) {
   })
 
   const units = Object.values(unitAnalysis)
-  const sortedDesc = [...units].sort((a, b) => b.value - a.value)
-  const sortedAsc = [...units].sort((a, b) => a.value - b.value)
+  const sortedDesc = [...units].sort((a, b) => a.value - b.value)
+  const sortedAsc = [...units].sort((a, b) => b.value - a.value)
   const topUnits = sortedDesc.slice(0, 10)
   const worstUnits = sortedAsc.slice(0, 10)
 
