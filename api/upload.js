@@ -167,7 +167,14 @@ function normalizeData(rawData) {
       } else if (lowerKey.includes('motivo') || lowerKey.includes('atraso')) {
         normalizedRow.motivoAtraso = row[key] || ''
       } else if (lowerKey.includes('status')) {
-        normalizedRow.status = row[key] || 'Em cobrança'
+        const rawStatus = (row[key] || '').toString().trim()
+
+        // Se estiver vazio → vira "Status vazio"
+        if (!rawStatus) {
+          normalizedRow.status = 'Status vazio'
+        } else {
+          normalizedRow.status = rawStatus
+        }
       } else if (lowerKey.includes('historico') || lowerKey.includes('histórico')) {
         normalizedRow.historico = row[key] || ''
       }
